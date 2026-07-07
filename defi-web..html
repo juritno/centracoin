@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple DeFi Platform</title>
+    <style>
+        * {
+            box-sizing: border-box; /* Agar padding tidak membuat elemen terlalu besar */
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a2e;
+            color: white;
+            margin: 0;
+            padding: 1rem; /* Jarak di sekitar halaman di HP */
+        }
+        .card {
+            background: #16213e;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        /* Logo - Lebih besar di HP */
+        .logo-img {
+            width: 120px;
+            height: auto;
+            margin-bottom: 1rem;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0,180,216,0.5);
+            animation: fadeIn 1.5s ease-in-out;
+            transition: all 0.3s ease;
+        }
+        .logo-img:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 0 25px rgba(0,180,216,0.8);
+        }
+
+        /* Gambar Sukses */
+        .success-img {
+            width: 90px;
+            height: auto;
+            margin: 1rem 0;
+            display: none;
+            animation: popUp 0.5s ease-out;
+        }
+
+        /* Ilustrasi - Sesuai lebar layar HP */
+        .blockchain-img {
+            width: 80%;
+            max-width: 250px;
+            height: auto;
+            margin-top: 1.5rem;
+            animation: slideUp 1s ease-out;
+            transition: transform 0.4s ease;
+        }
+        .blockchain-img:hover {
+            transform: translateY(-10px);
+            filter: brightness(1.2);
+        }
+
+        /* Tombol - Lebih besar dan mudah disentuh */
+        button {
+            background: #00b4d8;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.1rem; /* Ukuran font lebih besar */
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%; /* Tombol memenuhi lebar layar di HP */
+            max-width: 300px;
+            transition: background 0.3s ease;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        /* Input - Lebih besar dan mudah disentuh */
+        input {
+            padding: 12px;
+            width: 100%;
+            max-width: 280px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 1rem; /* Jarak antar input dan tombol */
+            font-size: 1.1rem;
+        }
+
+        h1 {
+            font-size: 1.8rem; /* Ukuran judul sesuai HP */
+            margin: 1rem 0;
+        }
+        h3 {
+            font-size: 1.4rem;
+        }
+        #info {
+            margin-top: 1rem;
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+        .section {
+            margin-top: 2rem;
+            border-top: 1px solid #333;
+            padding-top: 1rem;
+            animation: fadeInSlow 1.2s ease-in;
+        }
+
+        /* Keyframe tetap sama */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes popUp {
+            from { opacity: 0; transform: scale(0.5); }
+            70% { transform: scale(1.1); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInSlow {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="https://cdn-icons-png.flaticon.com/512/3059/3059677.png" alt="Logo DeFi" class="logo-img">
+        <h1>Simple DeFi Platform</h1>
+        <button id="connectBtn">Hubungkan MetaMask</button>
+        <div id="info"></div>
+
+        <img src="https://cdn-icons-png.flaticon.com/512/291/291645.png" alt="Berhasil!" class="success-img" id="successImg">
+
+        <div class="section" id="defiSection" style="display: none;">
+            <h3>Manajemen Saldo Anda</h3>
+            <p><strong>Saldo di Kontrak:</strong> <span id="contractBalance">0</span> ETH</p>
+            
+            <div>
+                <input type="number" id="depositAmount" placeholder="Jumlah ETH">
+                <button id="depositBtn">Deposit ETH</button>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <input type="number" id="withdrawAmount" placeholder="Jumlah ETH">
+                <button id="withdrawBtn">Tarik ETH</button>
+            </div>
+
+            <img src="https://cdn-icons-png.flaticon.com/512/888/888868.png" alt="Ilustrasi Blockchain" class="blockchain-img">
+        </div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+        const connectBtn = document.getElementById('connectBtn');
+        const infoDiv = document.getElementById('info');
+        const defiSection = document.getElementById('defiSection');
+        const contractBalanceSpan = document.getElementById('contractBalance');
+        const depositBtn = document.getElementById('depositBtn');
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const depositAmountInput = document.getElementById('depositAmount');
+        const withdrawAmountInput = document.getElementById('withdrawAmount');
+        const successImg = document.getElementById('successImg');
+
+        // GANTI DENGAN DATA KONTRAK ANDA!
+        const CONTRACT_ADDRESS = "0x...";
+        const CONTRACT_ABI = [
+            "function deposit() external payable",
+            "function withdraw(uint256 _amount) external",
+            "function getBalance() external view returns (uint256)"
+        ];
+
+        let provider, signer, contract;
+
+        // MetaMask di HP juga bisa digunakan (via aplikasi MetaMask atau browser yang mendukung)
+        if (typeof window.ethereum !== 'undefined') {
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            
+            window.ethereum.on('accountsChanged', async () => {
+                await loadUserInfo();
+            });
+
+            window.ethereum.on('chainChanged', () => {
+                window.location.reload();
+            });
+
+            connectBtn.addEventListener('click', async () => {
+                try {
+                    await provider.send("eth_requestAccounts", []);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                    
+                    await loadUserInfo();
+                    defiSection.style.display = "block";
+                } catch (error) {
+                    infoDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                }
+            });
+
+            depositBtn.addEventListener('click', async () => {
+                const amount = depositAmountInput.value;
+                if (!amount || amount <= 0) {
+                    alert("Masukkan jumlah ETH yang valid!");
+                    return;
+                }
+
+                try {
+                    const tx = await contract.deposit({
+                        value: ethers.utils.parseEther(amount)
+                    });
+                    infoDiv.innerHTML += `<p style="color: green;">Sedang memproses deposit... Tunggu sebentar!</p>`;
+                    await tx.wait();
+                    infoDiv.innerHTML += `<p style="color: green;">Deposit berhasil! Hash transaksi: <a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a></p>`;
+                    successImg.style.display = "block"; 
+                    setTimeout(() => successImg.style.display = "none", 3000); 
+                    await loadUserInfo();
+                    depositAmountInput.value = "";
+                } catch (error) {
+                    infoDiv.innerHTML += `<p style="color: red;">Error deposit: ${error.message}</p>`;
+                }
+            });
+
+            withdrawBtn.addEventListener('click', async () => {
+                const amount = withdrawAmountInput.value;
+                if (!amount || amount <= 0) {
+                    alert("Masukkan jumlah ETH yang valid!");
+                    return;
+                }
+
+                try {
+                    const tx = await contract.withdraw(ethers.utils.parseEther(amount));
+                    infoDiv.innerHTML += `<p style="color: green;">Sedang memproses penarikan... Tunggu sebentar!</p>`;
+                    await tx.wait();
+                    infoDiv.innerHTML += `<p style="color: green;">Penarikan berhasil! Hash transaksi: <a href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">${tx.hash}</a></p>`;
+                    successImg.style.display = "block"; 
+                    setTimeout(() => successImg.style.display = "none", 3000); 
+                    await loadUserInfo();
+                    withdrawAmountInput.value = "";
+                } catch (error) {
+                    infoDiv.innerHTML += `<p style="color: red;">Error penarikan: ${error.message}</p>`;
+                }
+            });
+
+        } else {
+            connectBtn.disabled = true;
+            infoDiv.innerHTML = `<p style="color: orange;">MetaMask tidak terdeteksi! <br> Silakan pasang aplikasi MetaMask dan buka web melalui browser di dalam aplikasi tersebut.</p>`;
+        }
+
+        async function loadUserInfo() {
+            const address = await signer.getAddress();
+            const ethBalance = await provider.getBalance(address);
+            const contractBalance = await contract.getBalance();
+
+            infoDiv.innerHTML = `
+                <p><strong>Akun Terhubung:</strong> ${address}</p>
+                <p><strong>Saldo ETH Anda:</strong> ${ethers.utils.formatEther(ethBalance)} ETH</p>
+            `;
+            contractBalanceSpan.textContent = ethers.utils.formatEther(contractBalance);
+        }
+    </script>
+</body>
+</html>
